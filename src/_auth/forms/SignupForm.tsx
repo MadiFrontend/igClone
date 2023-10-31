@@ -2,12 +2,12 @@ import { useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,10 +15,18 @@ import { SignuoValidation } from "@/lib/validation";
 import z from "zod";
 import Loader from "@/components/shared/Loader";
 import { Link } from "react-router-dom";
-import { createUserAccount } from "@/lib/appwrite/api";
+import {
+  useCreatUserAccount,
+  useSignInAccount,
+} from "@/lib/react-query/queriesAndMutations";
 
 const SignupForm = () => {
-  const isLoading = false;
+  const { toast } = useToast();
+  const { mutateAsync: createUserAccount, isLoading: isCreatingUser } =
+    useCreatUserAccount();
+  const { mutateAsync: signInAccount, isLoading: isSignIn } =
+    useSignInAccount();
+
   // 1. Define your form.
   const form = useForm<z.infer<typeof SignuoValidation>>({
     resolver: zodResolver(SignuoValidation),
@@ -33,7 +41,21 @@ const SignupForm = () => {
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof SignuoValidation>) {
     const newUser = await createUserAccount(values);
-    console.log(newUser);
+    if (!newUser) {
+      return toast({
+        title: "Sign up failed! Please try again",
+      });
+    }
+    const session = await signInAccount({
+      email: values.email,
+      password: values.password,
+    });
+
+    if (!session) {
+      return toast({
+        title: "Sign هد failed! Please try again",
+      });
+    }
   }
   return (
     <Form {...form}>
@@ -103,7 +125,7 @@ const SignupForm = () => {
             )}
           />
           <Button type="submit" className="shad-button_primary">
-            {isLoading ? (
+            {isCreatingUser ? (
               <div className="flex-center gap-2">
                 <Loader />
                 Loading ...
